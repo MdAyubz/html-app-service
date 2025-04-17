@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# Allow these files
+!Jenkinsfile
+!index.html
+!dockerfile
+!deploy-to-aks.sh
+!.gitignore
