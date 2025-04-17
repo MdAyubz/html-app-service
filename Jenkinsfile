@@ -7,7 +7,7 @@ pipeline {
         RESOURCE_GROUP = 'rg-devopsproj2'
         APP_NAME = 'html-app-service-devopsproj2'
         ACR_LOGIN_SERVER = "${ACR_NAME}.azurecr.io"
-	KUBECONFIG = credentials('kubeconfig') // Referencing the kubeconfig credential
+        KUBECONFIG = credentials('kubeconfig') // Referencing the kubeconfig credential
     }
 
     stages {
@@ -20,7 +20,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:latest -f dockerfile ."
+                    // Optionally, tag the image with the commit hash for better versioning
+                    def version = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    sh "docker build -t ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${version} -f dockerfile ."
                 }
             }
         }
@@ -35,33 +37,40 @@ pipeline {
 
         stage('Push to ACR') {
             steps {
-                sh "docker push ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:latest"
+                script {
+                    // Push the image with the version tag
+                    def version = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    sh "docker push ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${version}"
+                }
             }
         }
 
         stage('Deploy to AKS') {
             steps {
-                
-		sh '''
+                sh '''
                     chmod +x deploy-to-aks.sh
                     ./deploy-to-aks.sh
                 '''
-		
             }
         }
 
         stage('Deploy to Azure App Service') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'acr-creds', usernameVariable: 'ACR_USERNAME', passwordVariable: 'ACR_PASSWORD')]) {
-                    sh """
-                        az webapp config container set \
-                          --name ${APP_NAME} \
-                          --resource-group ${RESOURCE_GROUP} \
-                          --docker-custom-image-name ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:latest \
-                          --docker-registry-server-url https://${ACR_LOGIN_SERVER} \
-                          --docker-registry-server-user $ACR_USERNAME \
-                          --docker-registry-server-password $ACR_PASSWORD
-                    """
+                    script {
+                        // Deploy to Azure App Service using the pushed image (latest or versioned)
+                        def version = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                        
+                        sh """
+                            az webapp config container set \\
+                              --name ${APP_NAME} \\
+                              --resource-group ${RESOURCE_GROUP} \\
+                              --docker-custom-image-name ${ACR_LOGIN_SERVER}/${IMAGE_NAME}:${version} \\
+                              --docker-registry-server-url https://${ACR_LOGIN_SERVER} \\
+                              --docker-registry-server-user $ACR_USERNAME \\
+                              --docker-registry-server-password $ACR_PASSWORD
+                        """
+                    }
                 }
             }
         }
