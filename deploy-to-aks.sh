@@ -7,7 +7,8 @@ echo "⏳ Getting AKS credentials..."
 az aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER
 
 echo "🚀 Applying Kubernetes deployment..."
-kubectl apply -f k8s/deployment.yaml
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
 
 echo "✅ Deployment to AKS completed!"
 
