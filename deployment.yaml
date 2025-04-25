@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-html-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-html-app
+  template:
+    metadata:
+      labels:
+        app: test-html-app
+    spec:
+      containers:
+      - name: test-html-app
+        image: mytestacrjenkins.azurecr.io/test-html-app:latest
+        ports:
+        - containerPort: 80
+
